@@ -1,0 +1,14 @@
+.{
+    .name = "hello-world",
+    .version = "0.0.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "hello_world.zig",
+    },
+    .dependencies = .{
+        .example_step = .{
+            .path = "../"
+        }
+    }
+}
