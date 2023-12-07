@@ -14,7 +14,7 @@ Add example command as build steps.
 // #2
 const example_step = try @import("example_step");
 // #3
-const example_cmd = example_step.RunExample.create(b);
+const example_cmd = try example_step.RunExample.create(b);
 // #4
 const exe = b.addExecutable(...);
 example_cmd.addExample(exe, .{});
