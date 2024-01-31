@@ -1,21 +1,21 @@
 const std = @import("std");
 
 pub const RunExample = struct {
-    step: std.build.Step,
-    artifacts: std.StringArrayHashMap(*std.build.RunStep),
+    step: std.Build.Step,
+    artifacts: std.StringArrayHashMap(*std.Build.Step.Run),
     
     pub fn create(b: *std.Build) !*RunExample {
         const toplevel_step = b.step("example", "run example");
 
         const self = b.allocator.create(RunExample) catch @panic("OOM");
         self.* = .{
-            .step = std.build.Step.init(.{
+            .step = std.Build.Step.init(.{
                 .id = .custom,
                 .name = b.fmt("select example", .{}),
                 .owner = b,
                 .makeFn = make,
             }),
-            .artifacts = std.StringArrayHashMap(*std.build.RunStep).init(b.allocator),
+            .artifacts = std.StringArrayHashMap(*std.Build.Step.Run).init(b.allocator),
         };
 
         toplevel_step.dependOn(&self.step);
@@ -23,7 +23,7 @@ pub const RunExample = struct {
         return self;
     }
 
-    pub fn addExample(self: *RunExample, step: *std.build.CompileStep, args: anytype) void {
+    pub fn addExample(self: *RunExample, step: *std.Build.Step.Compile, args: anytype) void {
         const owner = self.step.owner;
 
         const run_cmd = owner.addRunArtifact(step);
@@ -57,7 +57,7 @@ pub const RunExample = struct {
         }
     }
 
-    fn outputName(artifact: *std.build.RunStep) ?[]const u8 {
+    fn outputName(artifact: *std.Build.Step.Run) ?[]const u8 {
         for (artifact.argv.items) |arg| {
             switch (arg) {
                 .artifact => |x| {
@@ -85,26 +85,26 @@ pub const RunExample = struct {
         }
     }
 
-    pub fn make(step: *std.build.Step, prog_node: *std.Progress.Node) !void {
+    pub fn make(step: *std.Build.Step, prog_node: *std.Progress.Node) !void {
         const self = @fieldParentPtr(RunExample, "step", step);
         
         const target = self.targetExample() orelse {
             self.usageExample();
-            @atomicStore(std.build.Step.State, &step.state, .skipped, .SeqCst);
+            @atomicStore(std.Build.Step.State, &step.state, .skipped, .SeqCst);
             return;
         };
 
         const artifact = (self.artifacts.get(target)) orelse artifact: {
             const index =  std.fmt.parseInt(u32, target, 10) catch {
                 self.usageExample();
-                @atomicStore(std.build.Step.State, &step.state, .failure, .SeqCst);
+                @atomicStore(std.Build.Step.State, &step.state, .failure, .SeqCst);
                 return;
             };
 
             const keys = self.artifacts.keys();
             if (index >= keys.len) {
                 self.usageExample();
-                @atomicStore(std.build.Step.State, &step.state, .failure, .SeqCst);
+                @atomicStore(std.Build.Step.State, &step.state, .failure, .SeqCst);
                 return;
             }
 
@@ -114,7 +114,7 @@ pub const RunExample = struct {
         try makeInternal(&artifact.step, prog_node);
     }
 
-    fn makeInternal(step: *std.build.Step, prog_node: *std.Progress.Node) !void {
+    fn makeInternal(step: *std.Build.Step, prog_node: *std.Progress.Node) !void {
         for (step.dependencies.items) |dep| {
             try makeInternal(dep, prog_node);
         }
@@ -125,18 +125,18 @@ pub const RunExample = struct {
         }
 
         if (result) |_| {
-            @atomicStore(std.build.Step.State, &step.state, .success, .SeqCst);
+            @atomicStore(std.Build.Step.State, &step.state, .success, .SeqCst);
         }
         else |err| switch (err) {
             error.MakeFailed => {
-                @atomicStore(std.build.Step.State, &step.state, .failure, .SeqCst);
+                @atomicStore(std.Build.Step.State, &step.state, .failure, .SeqCst);
                 return err;
             },
-            error.MakeSkipped => @atomicStore(std.build.Step.State, &step.state, .skipped, .SeqCst),
+            error.MakeSkipped => @atomicStore(std.Build.Step.State, &step.state, .skipped, .SeqCst),
         }
     }
 
-    fn dumpMakeError(step: *std.build.Step, prog_node: *std.Progress.Node) !void {
+    fn dumpMakeError(step: *std.Build.Step, prog_node: *std.Progress.Node) !void {
         prog_node.context.lock_stderr();
         defer prog_node.context.unlock_stderr();
         
